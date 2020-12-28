@@ -30,8 +30,13 @@ The currently supported methods are one of: id, name or xpath.
 
 ## Usage
 ```
-$ TARGET="grafana" LOGIN_USER="foo" LOGIN_PW="bar" URL="https://grafana.example.com" ./webdriver-login.py
+# For a supported target like Grafana
+$ TARGET="grafana" LOGIN_USER="foo" LOGIN_PW="c3VwZXJTZWNyZXRQYXNzd3JvZAo=" URL="https://grafana.example.com" ./webdriver-login.py
+
+# For an unsupported target
+$ URL="http://example.com" SELECTOR_USER="id" SELECTOR_VALUE_USER="userName" SELECTOR_PW="name" SELECTOR_VALUE_PW="inputPassword" SELECTOR_SUBMIT="xpath" SELECTOR_VALUE_PW="/html/body/app/div/div[1]/form/div[3]/button" LOGIN_USER="foo" LOGIN_PW="c3VwZXJTZWNyZXRQYXNzd3JvZAo=" ./webdriver-login.py
 ```
 
 ## Resources
-[Selenium/Webdriver Documentation](ww.selenium.dev/documentation/en/getting_started_with_webdriver)
+[W3C WebDriver Specification](https://w3c.github.io/webdriver/)
+[Selenium/WebDriver Documentation](ww.selenium.dev/documentation/en/getting_started_with_webdriver)

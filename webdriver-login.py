@@ -9,13 +9,14 @@ from selenium.webdriver.firefox.options import Options
 import sys
 import time
 
-log_path = '/tmp/geckobrowser.log'
-default_port = 443
-
 url = os.environ.get('URL')
 url_payload = os.environ.get('URL_PAYLOAD')
 port = os.environ.get('PORT')
 target = os.environ.get('TARGET')
+
+browser_headless = False
+browser_fullscreen = True
+log_path = '/tmp/geckobrowser.log'
 
 if not target:
     target = "unknown"
@@ -71,27 +72,25 @@ if not os.environ.get('LOGIN_PW'):
 else:
     login_pw = base64.b64decode(os.environ.get('LOGIN_PW')).decode("utf-8")
 
-if port:
-    port = int(port)
-    if port < 1025 or port > 65535:
-        port = default_port
-else:
-    port = default_port
-
 if len(url) < 12:
     print("Not a valid URL")
     sys.exit(1)
 
 options = Options()
-options.headless = True
+if browser_headless:
+    options.headless = True
 options.log.level = "info"
 browser = webdriver.Firefox(options=options,
                             service_log_path=log_path)
 
 try:
+    if browser_fullscreen:
+        browser.fullscreen()
+
     print("Opening " + url)
     browser.get(url)
-    # User
+
+    # User: Find and fill user input
     if html_login_selector_user == "name":
         e = browser.find_element(By.NAME, html_login_selector_value_user)
     elif html_login_selector_user == "id":
@@ -103,7 +102,7 @@ try:
         sys.exit(1)
     e.send_keys(login_user)
 
-    # Password
+    # Password: Find and fill password input
     if html_login_selector_pw == "name":
         e = browser.find_element(By.NAME, html_login_selector_value_pw)
     elif html_login_selector_pw == "id":
@@ -115,7 +114,7 @@ try:
         sys.exit(1)
     e.send_keys(login_pw)
 
-    # Submit
+    # Submit: Find and click submit button
     if html_login_selector_submit == "name":
         e = browser.find_element(By.NAME, html_login_selector_value_submit)
     elif html_login_selector_submit == "id":

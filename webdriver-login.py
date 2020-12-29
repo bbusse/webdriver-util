@@ -13,9 +13,23 @@ url = os.environ.get('URL')
 url_payload = os.environ.get('URL_PAYLOAD')
 target = os.environ.get('TARGET')
 
-browser_headless = False
-browser_fullscreen = True
-browser_close = True
+# Configure browser
+if os.getenv("BROWSER_HEADLESS") is not None:
+    browser_headless = os.environ.get(BROWSER_HEADLESS)
+else:
+    browser_headless = False
+
+if os.getenv("BROWSER_FULLSCREEN") is not None:
+    browser_fullscreen = os.environ.get(BROWSER_FULLSCREEN)
+else:
+    browser_fullscreen = True
+
+if os.getenv("BROWSER_CLOSE") is not None:
+    browser_fullscreen = os.environ.get(BROWSER_CLOSE)
+else:
+    browser_close = True
+
+# Logging
 log_path = '/tmp/geckobrowser.log'
 log_level = 'info'
 

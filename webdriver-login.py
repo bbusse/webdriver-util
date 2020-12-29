@@ -22,13 +22,22 @@ log_path = '/tmp/geckobrowser.log'
 if not target:
     target = "unknown"
 
+# Add trailing slash if it does not exist
+if not url.endswith("/"):
+    url += "/"
+
+path_logout = {
+    "gitea":     "",
+    "grafana":   "logout",
+    "roundcube": "?_task=logout"
+}
+
 msg_error_selector = "No valid selection method supplied. Use one of id/name/xpath"
 
+# Check for a successful login
 def validate_login(target, validate_url, url):
     print("Validating: ", validate_url)
     if target == "grafana":
-        if not url.endswith("/"):
-            url += "/"
         if not validate_url.startswith(url + "?orgId="):
             return False
         return True
@@ -36,6 +45,17 @@ def validate_login(target, validate_url, url):
         print("Can not validate login for unknown target")
 
     return False
+
+
+# Logout
+def logout(target, url, path_logout):
+    if target == "unknown":
+        return False
+    else:
+        url_logout = url + path_logout[target]
+        browser.get(url_logout)
+
+    return True
 
 
 if target == "grafana":
@@ -149,4 +169,6 @@ try:
 finally:
     if browser is not None:
         if browser_close:
+            print("Logging out of " + target)
+            logout(target, url, path_logout)
             browser.close()

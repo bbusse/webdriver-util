@@ -85,7 +85,7 @@ browser = webdriver.Firefox(options=options,
 
 try:
     if browser_fullscreen:
-        browser.fullscreen()
+        browser.fullscreen_window()
 
     print("Opening " + url)
     browser.get(url)

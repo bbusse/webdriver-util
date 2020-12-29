@@ -39,7 +39,7 @@ TARGET can be one of
 
 In cases where the target is not supported, the user/password/submit
 element selection methods and their values must be supplied additionally.  
-The currently supported methods are one of: id, name or xpath.  
+The currently supported methods are one of: __"id"__, __"name"__ or __"xpath"__.  
 "id" is ideal but does not always exist.
 - SELECTOR_USER - The method to select the user input element
 - SELECTOR_PW - The method to select the user input element
@@ -52,4 +52,5 @@ The currently supported methods are one of: id, name or xpath.
 
 ## Resources
 [W3C WebDriver Specification](https://w3c.github.io/webdriver/)  
-[Selenium/WebDriver Documentation](ww.selenium.dev/documentation/en/getting_started_with_webdriver)
+[Selenium/WebDriver Documentation](ww.selenium.dev/documentation/en/getting_started_with_webdriver)  
+[Mozilla geckodriver](https://github.com/mozilla/geckodriver)

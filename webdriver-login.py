@@ -16,6 +16,7 @@ target = os.environ.get('TARGET')
 
 browser_headless = False
 browser_fullscreen = True
+browser_close = True
 log_path = '/tmp/geckobrowser.log'
 
 if not target:
@@ -77,8 +78,8 @@ if len(url) < 12:
     sys.exit(1)
 
 options = Options()
-if browser_headless:
-    options.headless = True
+if not browser_headless:
+    options.headless = False
 options.log.level = "info"
 browser = webdriver.Firefox(options=options,
                             service_log_path=log_path)
@@ -128,7 +129,11 @@ try:
     e.click()
 
     # Add some grace time
-    time.sleep(3)
+    # We need less time when running headless
+    if not browser_headless:
+        time.sleep(10)
+    else:
+        time.sleep(3)
 
     # Validate Login
     if not validate_login(target, browser.current_url, url):
@@ -143,4 +148,5 @@ try:
             browser.get(url_payload)
 finally:
     if browser is not None:
-        browser.close()
+        if browser_close:
+            browser.close()

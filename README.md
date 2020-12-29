@@ -29,7 +29,7 @@ $ URL="http://example.com" \
 - URL - The target URL
 - URL_PAYLOAD - The URL to open after successful login (optional)
 - LOGIN_USER - The user to use for logging in
-- LOGIN_PW - The password to use for logging in
+- LOGIN_PW - The base64 encoded password to use for logging in
 
 With a target given, only the above environment variables are needed.
 TARGET can be one of
@@ -39,7 +39,7 @@ TARGET can be one of
 
 In cases where the target is not supported, the user/password/submit
 element selection methods and their values must be supplied additionally.  
-The currently supported methods are one of: id, name or xpath.
+The currently supported methods are one of: id, name or xpath.  
 "id" is ideal but does not always exist.
 - SELECTOR_USER - The method to select the user input element
 - SELECTOR_PW - The method to select the user input element

@@ -49,6 +49,10 @@ The currently supported methods are one of: __"id"__, __"name"__ or __"xpath"__.
 - SELECTOR_VALUE_PW - The value for the above selected element
 - SELECTOR_VALUE_SUBMIT - The value for the above selected element
 
+### Other optional Environment Variables
+- BROWSER_HEADLESS - Whether to run headless or not (defaults to False)
+- BROWSER_FULLSCREEN - Whether to run fullscreen or not (defaults to True)
+- BROWSER_CLOSE - Whether to close the browser after the script run (defaults to True
 
 ## Resources
 [W3C WebDriver Specification](https://w3c.github.io/webdriver/)  

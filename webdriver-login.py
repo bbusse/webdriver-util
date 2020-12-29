@@ -11,13 +11,13 @@ import time
 
 url = os.environ.get('URL')
 url_payload = os.environ.get('URL_PAYLOAD')
-port = os.environ.get('PORT')
 target = os.environ.get('TARGET')
 
 browser_headless = False
 browser_fullscreen = True
 browser_close = True
 log_path = '/tmp/geckobrowser.log'
+log_level = 'info'
 
 if not target:
     target = "unknown"
@@ -100,7 +100,7 @@ if len(url) < 12:
 options = Options()
 if not browser_headless:
     options.headless = False
-options.log.level = "info"
+options.log.level = log_level
 browser = webdriver.Firefox(options=options,
                             service_log_path=log_path)
 

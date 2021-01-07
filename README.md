@@ -47,7 +47,10 @@ optional arguments:
 ```
 ### Using command line arguments
 ```
-$ ./webdriver-login.py --url https://grafana.example.com --login-user foo --login-pw c3VwZXJTZWNyZXRQYXNzd3JvZAo=
+$ ./webdriver-login.py --target grafana \
+                       --url https://grafana.example.com \
+                       --login-user foo \
+                       --login-pw c3VwZXJTZWNyZXRQYXNzd3JvZAo=
 
 ```
 ### Using only environment variable

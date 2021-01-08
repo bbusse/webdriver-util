@@ -5,8 +5,8 @@
 # Copyright (c) 2020 Björn Busse <bj.rn@baerlin.eu>
 #
 
-import argparse
 import base64
+import configargparse
 import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -161,21 +161,21 @@ def web_login(browser, browser_options, login, html_login):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser( description="")
-    parser.add_argument('--browser-headless', dest='browser_headless', action='append', help="Run the browser in headless mode", type=bool, default=False)
-    parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', help="Run browser in fullscreen mode", type=bool, default=False)
-    parser.add_argument('--browser-close', dest='browser_close', help="Close browser after successful run", type=bool)
-    parser.add_argument('--target', dest='target', help="The application to log into", type=str, default="")
-    parser.add_argument('--url', dest='url', action='append', help="URL to open in browser startup", type=str, required=True)
-    parser.add_argument('--url-payload', dest='url_payload', action='append', help="URL to open after successful login", type=str, default="")
-    parser.add_argument('--login-user', dest='login_user', help="Username to use for web-app login", type=str, required=True)
-    parser.add_argument('--login-pw', dest='login_pw', help="Password to user for web-app login", type=str, required=True)
-    parser.add_argument('--selector-user', dest='selector_user', help="The method to select the user input element", type=str)
-    parser.add_argument('--selector-pw', dest='selector_pw', help="The method to select the user input element", type=str)
-    parser.add_argument('--selector-submit', dest='selector_submit', help="The method to select the submit button element", type=str)
-    parser.add_argument('--selector-value-user', dest='selector_value_user', help="The value for the user element selection", type=str)
-    parser.add_argument('--selector-value-pw', dest='selector_value_pw', help="The value for the pw element selection", type=str)
-    parser.add_argument('--selector-value-submit', dest='selector_value_submit', help="The value for the submit element selection", type=str)
+    parser = configargparse.ArgParser( description="")
+    parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', action='append', help="Run the browser in headless mode", type=bool, default=False)
+    parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
+    parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
+    parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
+    parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
+    parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  action='append', help="URL to open after successful login", type=str, default="")
+    parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=True)
+    parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=True)
+    parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)
+    parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW',  help="The method to select the user input element", type=str)
+    parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT',  help="The method to select the submit button element", type=str)
+    parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER',  help="The value for the user element selection", type=str)
+    parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW',  help="The value for the pw element selection", type=str)
+    parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT',  help="The value for the submit element selection", type=str)
     args = parser.parse_args()
 
     browser_headless = args.browser_headless

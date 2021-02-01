@@ -99,6 +99,13 @@ def web_login(browser, browser_options, login, html_login):
         html_login_selector_value_user = "rcmloginuser"
         html_login_selector_value_pw = "rcmloginpwd"
         html_login_selector_value_submit = "rcmloginsubmit"
+    elif login['target'] == "spotify":
+        html_login_selector_user = "name"
+        html_login_selector_pw = "name"
+        html_login_selector_submit = "id"
+        html_login_selector_value_user = "username"
+        html_login_selector_value_pw = "password"
+        html_login_selector_value_submit = "login-button"
     else:
         # Selection by: id / name / css-selector / xpath
         html_login_selector_user = html_login['selector_user']

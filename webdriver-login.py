@@ -23,7 +23,8 @@ log_level = 'info'
 path_logout = {
     "gitea":     "",
     "grafana":   "logout",
-    "roundcube": "?_task=logout"
+    "roundcube": "?_task=logout",
+    "spotify":   ""
 }
 
 msg_error_selector = "No valid selection method supplied. Use one of id/name/xpath"

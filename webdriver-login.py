@@ -216,8 +216,8 @@ if __name__ == '__main__':
         "headless":               browser_headless,
         "fullscreen":             browser_fullscreen,
         "close":                  browser_close,
-        "gracetime_headless":     10,
-        "gracetime_non_headless": 3
+        "gracetime_headless":     3,
+        "gracetime_non_headless": 10
     }
 
     login_pw = base64.b64decode(login_pw).decode("utf-8")

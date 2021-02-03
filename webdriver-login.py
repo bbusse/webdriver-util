@@ -54,13 +54,14 @@ def web_validate_login(target, validate_url, url):
             return False
         return True
     elif target == "spotify":
-        if not validate_url.startswith(url + "en/status"):
+        if not validate_url.startswith("https://accounts.spotify.com/en/status"):
+            print(url)
             return False
         return True
     elif target == "unknown":
         print("Can not validate login for unknown target")
 
-    return False
+    return True
 
 
 # Logout
@@ -236,7 +237,7 @@ if __name__ == '__main__':
     }
 
     if None == which('geckodriver'):
-        print('Could not find geckodriver. You can download it from: https://github.com/mozilla/geckodriver/releases/')
+        print('Could not find geckodriver.\nYou can download it from: https://github.com/mozilla/geckodriver/releases/')
         sys.exit(1)
 
     if None == which('firefox'):

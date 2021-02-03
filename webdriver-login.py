@@ -179,7 +179,7 @@ if __name__ == '__main__':
     parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
     parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
     parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
-    parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  action='append', help="URL to open after successful login", type=str, default="")
+    parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  help="URL to open after successful login", type=str, default="")
     parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=True)
     parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=True)
     parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)

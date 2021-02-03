@@ -170,7 +170,7 @@ def web_login(browser, browser_options, login, html_login):
 if __name__ == '__main__':
 
     parser = configargparse.ArgParser( description="")
-    parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', action='append', help="Run the browser in headless mode", type=bool, default=False)
+    parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', help="Run the browser in headless mode", type=bool, default=False)
     parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
     parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
     parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")

@@ -53,6 +53,10 @@ def web_validate_login(target, validate_url, url):
         if not validate_url.startswith(url + "?orgId="):
             return False
         return True
+    elif target == "spotify":
+        if not validate_url.startswith(url + "en/status"):
+            return False
+        return True
     elif target == "unknown":
         print("Can not validate login for unknown target")
 

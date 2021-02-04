@@ -76,13 +76,14 @@ def web_logout(target, url, path_logout):
 
 
 # Setup browser
-def browser_setup(browser_options):
+def browser_setup(browser_options, browser_profile):
     options = Options()
     if not browser_options['headless']:
         options.headless = False
 
     options.log.level = browser_options['log_level']
     browser = webdriver.Firefox(options=options,
+                                firefox_profile=browser_profile,
                                 service_log_path=browser_options['log_path'])
 
     return browser
@@ -177,6 +178,7 @@ if __name__ == '__main__':
     parser = configargparse.ArgParser( description="")
     parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', help="Run the browser in headless mode", type=bool, default=False)
     parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
+    parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM',  help="Download and enable DRM binaries", type=bool, default=False)
     parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
     parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
     parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
@@ -193,6 +195,7 @@ if __name__ == '__main__':
 
     browser_headless = args.browser_headless
     browser_fullscreen = args.browser_fullscreen
+    browser_drm = args.browser_drm
     browser_close = args.browser_close
     target = args.target
     url = args.url[0]
@@ -252,7 +255,13 @@ if __name__ == '__main__':
     if not url.endswith("/"):
         url += "/"
 
-    browser = browser_setup(browser_options)
+    browser_profile = webdriver.FirefoxProfile()
+
+    if browser_drm:
+        browser_profile.set_preference("media.gmp-manager.updateEnabled", True)
+        browser_profile.set_preference("media.eme.enabled", True)
+
+    browser = browser_setup(browser_options, browser_profile)
     r = web_login(browser, browser_options, login, html_login)
 
     # Add some grace time
@@ -274,6 +283,7 @@ if __name__ == '__main__':
         else:
             print("Opening payload: ", login['url_payload'])
             browser.get(login['url_payload'])
+            #driver.find_element_by_xpath("").click()
 
         if browser_options['close']:
             print("Logging out of " + login['url'])

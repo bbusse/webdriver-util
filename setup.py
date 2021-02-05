@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from setuptools import find_packages, setup
 
-setup(name='webdriver-util',
+setup(name='webdriver_util',
       version='0.2.0',
       description='webdriver util',
       url='https://github.com/bbusse/webdriver-util',

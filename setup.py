@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 setup(name='webdriver_util',
       version='0.2.0',
       description='webdriver util',
-      url='https://github.com/bbusse/webdriver-util',
+      url='https://github.com/bbusse/webdriver_util',
       author='Björn Busse',
       author_email='bj.rn@baerlin.eu',
       license='BSD 3-Clause License',

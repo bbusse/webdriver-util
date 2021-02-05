@@ -10,7 +10,7 @@ setup(name='webdriver-util',
       author_email='bj.rn@baerlin.eu',
       license='BSD 3-Clause License',
       packages=find_packages('.', exclude=['tests']),
-      install_requires=["configparse  >= 1.2.3",
+      install_requires=["configargparse  >= 1.2.3",
                         "selenium >= 3.141.0"],
       classifiers=[
           "Programming Language :: Python",

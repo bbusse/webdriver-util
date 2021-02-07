@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 #
-# webdriver-login
+# webdriver-util
+#
+# Automated and optionally headless login
+# for web-applications, driven by webdriver
 #
 # Copyright (c) 2020 Björn Busse <bj.rn@baerlin.eu>
 #
@@ -73,20 +76,6 @@ def web_logout(target, url, path_logout):
         browser.get(url_logout)
 
     return True
-
-
-# Setup browser
-def browser_setup(browser_options, browser_profile):
-    options = Options()
-    if not browser_options['headless']:
-        options.headless = False
-
-    options.log.level = browser_options['log_level']
-    browser = webdriver.Firefox(options=options,
-                                firefox_profile=browser_profile,
-                                service_log_path=browser_options['log_path'])
-
-    return browser
 
 
 # Log into web-app
@@ -173,119 +162,149 @@ def web_login(browser, browser_options, login, html_login):
     return False
 
 
+def return_browser_init(log_path, log_level, path_login):
+    return Browser(log_path, log_level, path_login)
+
+
+class Browser:
+
+    def __init__(self, log_path, log_level, path_login):
+        self.login = {}
+        self.browser = self.browser_init(log_path, log_level, path_login)
+
+
+    # Setup browser
+    def browser_setup(self, browser_options, browser_profile):
+        options = Options()
+        if not browser_options['headless']:
+            options.headless = False
+
+        options.log.level = browser_options['log_level']
+        browser = webdriver.Firefox(options=options,
+                                    firefox_profile=browser_profile,
+                                    service_log_path=browser_options['log_path'])
+
+        return browser
+
+
+    def browser_init(self, log_path, log_level, path_logout):
+
+        parser = configargparse.ArgParser( description="")
+        parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', help="Run the browser in headless mode", type=bool, default=False)
+        parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
+        parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM',  help="Download and enable DRM binaries", type=bool, default=False)
+        parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
+        parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
+        parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
+        parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  help="URL to open after successful login", type=str, default="")
+        parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=True)
+        parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=True)
+        parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)
+        parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW',  help="The method to select the user input element", type=str)
+        parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT',  help="The method to select the submit button element", type=str)
+        parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER',  help="The value for the user element selection", type=str)
+        parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW',  help="The value for the pw element selection", type=str)
+        parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT',  help="The value for the submit element selection", type=str)
+        args = parser.parse_args()
+
+        browser_headless = args.browser_headless
+        browser_fullscreen = args.browser_fullscreen
+        browser_drm = args.browser_drm
+        browser_close = args.browser_close
+        target = args.target
+        url = args.url[0]
+        url_payload = args.url_payload
+        login_user = args.login_user
+        login_pw = args.login_pw
+
+        html_login = {
+            "selector_user":          args.selector_user,
+            "selector_pw":            args.selector_pw,
+            "selector_submit":        args.selector_submit,
+            "selector_value_user":    args.selector_value_user,
+            "selector_value_pw":      args.selector_value_pw,
+            "selector_value_submit":  args.selector_value_submit
+        }
+
+        if not target:
+            target = "unknown"
+            path_logout = "unknown"
+        else:
+            path_logout_target = path_logout[target]
+
+        browser_options = {
+            "log_level":              log_level,
+            "log_path":               log_path,
+            "headless":               browser_headless,
+            "fullscreen":             browser_fullscreen,
+            "close":                  browser_close,
+            "gracetime_headless":     3,
+            "gracetime_non_headless": 30
+        }
+
+        login_pw = base64.b64decode(login_pw).decode("utf-8")
+
+        self.login["target"] = target
+        self.login["url"] = url
+        self.login["url_payload"] = url_payload
+        self.login["user"] = login_user
+        self.login["pw"] = login_pw
+        self.login["path_logout_target"] = path_logout
+
+        if None == which('geckodriver'):
+            print('Could not find geckodriver.\nYou can download it from: https://github.com/mozilla/geckodriver/releases/')
+            sys.exit(1)
+
+        if None == which('firefox'):
+            print('Could not find firefox. Aborting..')
+            sys.exit(1)
+
+        if len(url) < 12:
+            print('Not a valid URL: ', len(url))
+            sys.exit(1)
+
+        # Add trailing slash if it does not exist
+        if not url.endswith("/"):
+            url += "/"
+
+        browser_profile = webdriver.FirefoxProfile()
+
+        if browser_drm:
+            browser_profile.set_preference("media.gmp-manager.updateEnabled", True)
+            browser_profile.set_preference("media.eme.enabled", True)
+
+        browser = self.browser_setup(browser_options, browser_profile)
+        r = web_login(browser, browser_options, self.login, html_login)
+
+        # Add some grace time
+        # We need less time when running headless
+        if not browser_options['headless']:
+            time.sleep(browser_options['gracetime_non_headless'])
+        else:
+            time.sleep(browser_options['gracetime_headless'])
+
+        # Validate Login
+        if not web_validate_login(self.login['target'], browser.current_url, self.login['url']):
+            print("Failed to log into " + self.login['target'] + " on: " + self.login['url'])
+        else:
+            print("Successfully logged into " + self.login['target'] + " on: " + self.login['url'])
+
+            # Open payload
+            if not self.login['url_payload']:
+                print("No payload supplied, exiting")
+            else:
+                print("Opening payload: ", self.login['url_payload'])
+                browser.get(self.login['url_payload'])
+                #driver.find_element_by_xpath("").click()
+
+            if browser_options['close']:
+                print("Logging out of " + self.login['url'])
+                web_logout(self.login['target'], self.login['url'],self.login['path_logout'])
+                browser.close()
+
+        return browser
+
+
 if __name__ == '__main__':
 
-    parser = configargparse.ArgParser( description="")
-    parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', help="Run the browser in headless mode", type=bool, default=False)
-    parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
-    parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM',  help="Download and enable DRM binaries", type=bool, default=False)
-    parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
-    parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
-    parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
-    parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  help="URL to open after successful login", type=str, default="")
-    parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=True)
-    parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=True)
-    parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)
-    parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW',  help="The method to select the user input element", type=str)
-    parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT',  help="The method to select the submit button element", type=str)
-    parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER',  help="The value for the user element selection", type=str)
-    parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW',  help="The value for the pw element selection", type=str)
-    parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT',  help="The value for the submit element selection", type=str)
-    args = parser.parse_args()
-
-    browser_headless = args.browser_headless
-    browser_fullscreen = args.browser_fullscreen
-    browser_drm = args.browser_drm
-    browser_close = args.browser_close
-    target = args.target
-    url = args.url[0]
-    url_payload = args.url_payload
-    login_user = args.login_user
-    login_pw = args.login_pw
-
-    html_login = {
-        "selector_user":          args.selector_user,
-        "selector_pw":            args.selector_pw,
-        "selector_submit":        args.selector_submit,
-        "selector_value_user":    args.selector_value_user,
-        "selector_value_pw":      args.selector_value_pw,
-        "selector_value_submit":  args.selector_value_submit
-    }
-
-    if not target:
-        target = "unknown"
-        path_logout = "unknown"
-    else:
-        path_logout_target = path_logout[target]
-
-    browser_options = {
-        "log_level":              log_level,
-        "log_path":               log_path,
-        "headless":               browser_headless,
-        "fullscreen":             browser_fullscreen,
-        "close":                  browser_close,
-        "gracetime_headless":     3,
-        "gracetime_non_headless": 30
-    }
-
-    login_pw = base64.b64decode(login_pw).decode("utf-8")
-
-    login = {
-        "target":             target,
-        "url":                url,
-        "url_payload":        url_payload,
-        "user":               login_user,
-        "pw":                 login_pw,
-        "path_logout_target": path_logout
-    }
-
-    if None == which('geckodriver'):
-        print('Could not find geckodriver.\nYou can download it from: https://github.com/mozilla/geckodriver/releases/')
-        sys.exit(1)
-
-    if None == which('firefox'):
-        print('Could not find firefox. Aborting..')
-        sys.exit(1)
-
-    if len(url) < 12:
-        print('Not a valid URL: ', len(url))
-        sys.exit(1)
-
-    # Add trailing slash if it does not exist
-    if not url.endswith("/"):
-        url += "/"
-
-    browser_profile = webdriver.FirefoxProfile()
-
-    if browser_drm:
-        browser_profile.set_preference("media.gmp-manager.updateEnabled", True)
-        browser_profile.set_preference("media.eme.enabled", True)
-
-    browser = browser_setup(browser_options, browser_profile)
-    r = web_login(browser, browser_options, login, html_login)
-
-    # Add some grace time
-    # We need less time when running headless
-    if not browser_options['headless']:
-        time.sleep(browser_options['gracetime_non_headless'])
-    else:
-        time.sleep(browser_options['gracetime_headless'])
-
-    # Validate Login
-    if not web_validate_login(login['target'], browser.current_url, login['url']):
-        print("Failed to log into " + login['target'] + " on: " + login['url'])
-    else:
-        print("Successfully logged into " + login['target'] + " on: " + login['url'])
-
-        # Open payload
-        if not login['url_payload']:
-            print("No payload supplied, exiting")
-        else:
-            print("Opening payload: ", login['url_payload'])
-            browser.get(login['url_payload'])
-            #driver.find_element_by_xpath("").click()
-
-        if browser_options['close']:
-            print("Logging out of " + login['url'])
-            web_logout(login['target'], login['url'], login['path_logout'])
-            browser.close()
+    browser = Browser(log_path, log_level, path_logout)

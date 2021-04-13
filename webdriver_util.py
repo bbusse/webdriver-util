@@ -25,7 +25,7 @@ log_level = 'info'
 
 path_logout = {
     "gitea":     "",
-    "grafana":   "logout",
+    "grafana5":   "logout",
     "roundcube": "?_task=logout",
     "spotify":   ""
 }
@@ -52,7 +52,7 @@ def which(cmd):
 # Check for a successful login
 def web_validate_login(target, validate_url, url):
     print("Validating Login: ", validate_url)
-    if target == "grafana":
+    if target == "grafana5":
         if not validate_url.startswith(url + "?orgId="):
             return False
         return True
@@ -81,7 +81,7 @@ def web_logout(target, url, path_logout):
 # Log into web-app
 def web_login(browser, browser_options, login, html_login):
 
-    if login['target'] == "grafana":
+    if login['target'] == "grafana5":
         html_login_selector_user = "name"
         html_login_selector_pw = "id"
         html_login_selector_submit = "xpath"
@@ -199,7 +199,7 @@ class Browser:
         parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD', help="URL to open after successful login", type=str, default="")
         parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER', help="Username to use for web-app login", type=str, required=False)
         parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW', help="Password to user for web-app login", type=str, required=False)
-        parser.add_argument('--login-pw-base64', dest='login_pw_base64', env_var='LOGIN_PW_BASE64', help="Is the password base64 encoded?", type=bool, default=False)
+        parser.add_argument('--login-pw-base64', dest='login_pw_base64', env_var='LOGIN_PW_BASE64', help="Is the password base64 encoded?", type=bool, default=True)
         parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER', help="The method to select the user input element", type=str)
         parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW', help="The method to select the user input element", type=str)
         parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT', help="The method to select the submit button element", type=str)

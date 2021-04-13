@@ -197,8 +197,8 @@ class Browser:
         parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
         parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
         parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  help="URL to open after successful login", type=str, default="")
-        parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=True)
-        parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=True)
+        parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=False)
+        parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=False)
         parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)
         parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW',  help="The method to select the user input element", type=str)
         parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT',  help="The method to select the submit button element", type=str)
@@ -242,7 +242,8 @@ class Browser:
             "gracetime_non_headless": 30
         }
 
-        login_pw = base64.b64decode(login_pw).decode("utf-8")
+        if login_pw:
+            login_pw = base64.b64decode(login_pw).decode("utf-8")
 
         self.login["target"] = target
         self.login["url"] = url

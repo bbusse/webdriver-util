@@ -190,21 +190,22 @@ class Browser:
     def browser_init(self, log_path, log_level, path_logout):
 
         parser = configargparse.ArgParser( description="")
-        parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', help="Run the browser in headless mode", type=bool, default=False)
+        parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS',help="Run the browser in headless mode", type=bool, default=False)
         parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
-        parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM',  help="Download and enable DRM binaries", type=bool, default=False)
-        parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
-        parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
+        parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM', help="Download and enable DRM binaries", type=bool, default=False)
+        parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE', help="Close browser after successful run", type=bool)
+        parser.add_argument('--target', dest='target', env_var='TARGET', help="The application to log into", type=str, default="")
         parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
-        parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  help="URL to open after successful login", type=str, default="")
-        parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=False)
-        parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=False)
-        parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)
-        parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW',  help="The method to select the user input element", type=str)
-        parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT',  help="The method to select the submit button element", type=str)
-        parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER',  help="The value for the user element selection", type=str)
-        parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW',  help="The value for the pw element selection", type=str)
-        parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT',  help="The value for the submit element selection", type=str)
+        parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD', help="URL to open after successful login", type=str, default="")
+        parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER', help="Username to use for web-app login", type=str, required=False)
+        parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW', help="Password to user for web-app login", type=str, required=False)
+        parser.add_argument('--login-pw-base64', dest='login_pw_base64', env_var='LOGIN_PW_BASE64', help="Is the password base64 encoded?", type=bool, default=False)
+        parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER', help="The method to select the user input element", type=str)
+        parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW', help="The method to select the user input element", type=str)
+        parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT', help="The method to select the submit button element", type=str)
+        parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER', help="The value for the user element selection", type=str)
+        parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW', help="The value for the pw element selection", type=str)
+        parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT', help="The value for the submit element selection", type=str)
         args = parser.parse_args()
 
         browser_headless = args.browser_headless
@@ -216,6 +217,7 @@ class Browser:
         url_payload = args.url_payload
         login_user = args.login_user
         login_pw = args.login_pw
+        login_pw_base64 = args.login_pw_base64
 
         html_login = {
             "selector_user":          args.selector_user,
@@ -242,7 +244,8 @@ class Browser:
             "gracetime_non_headless": 30
         }
 
-        if login_pw:
+        login_pw_base64=False
+        if login_pw and login_pw_base64:
             login_pw = base64.b64decode(login_pw).decode("utf-8")
 
         self.login["target"] = target

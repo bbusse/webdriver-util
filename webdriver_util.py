@@ -10,6 +10,7 @@
 
 import base64
 import configargparse
+import logging
 import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -162,15 +163,15 @@ def web_login(browser, browser_options, login, html_login):
     return False
 
 
-def return_browser_init(log_path, log_level, path_login):
+def return_browser_init(args, log_path, log_level, path_login):
     return Browser(log_path, log_level, path_login)
 
 
 class Browser:
 
-    def __init__(self, log_path, log_level, path_login):
+    def __init__(self, args, log_path, log_level, path_login):
         self.login = {}
-        self.browser = self.browser_init(log_path, log_level, path_login)
+        self.browser = self.browser_init(args, log_path, log_level, path_login)
 
 
     # Setup browser
@@ -187,26 +188,7 @@ class Browser:
         return browser
 
 
-    def browser_init(self, log_path, log_level, path_logout):
-
-        parser = configargparse.ArgParser( description="")
-        parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS',help="Run the browser in headless mode", type=bool, default=False)
-        parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
-        parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM', help="Download and enable DRM binaries", type=bool, default=False)
-        parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE', help="Close browser after successful run", type=bool)
-        parser.add_argument('--target', dest='target', env_var='TARGET', help="The application to log into", type=str, default="")
-        parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
-        parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD', help="URL to open after successful login", type=str, default="")
-        parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER', help="Username to use for web-app login", type=str, required=False)
-        parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW', help="Password to user for web-app login", type=str, required=False)
-        parser.add_argument('--login-pw-base64', dest='login_pw_base64', env_var='LOGIN_PW_BASE64', help="Is the password base64 encoded?", type=bool, default=True)
-        parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER', help="The method to select the user input element", type=str)
-        parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW', help="The method to select the user input element", type=str)
-        parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT', help="The method to select the submit button element", type=str)
-        parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER', help="The value for the user element selection", type=str)
-        parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW', help="The value for the pw element selection", type=str)
-        parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT', help="The value for the submit element selection", type=str)
-        args = parser.parse_args()
+    def browser_init(self, args, log_path, log_level, path_logout):
 
         browser_headless = args.browser_headless
         browser_fullscreen = args.browser_fullscreen
@@ -295,9 +277,9 @@ class Browser:
 
             # Open payload
             if not self.login['url_payload']:
-                print("No payload supplied, exiting")
+                logging.info("No payload supplied")
             else:
-                print("Opening payload: ", self.login['url_payload'])
+                logging("Opening payload: ", self.login['url_payload'])
                 browser.get(self.login['url_payload'])
                 #driver.find_element_by_xpath("").click()
 
@@ -311,4 +293,59 @@ class Browser:
 
 if __name__ == '__main__':
 
-    browser = Browser(log_path, log_level, path_logout)
+    parser = configargparse.ArgParser( description="")
+    parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', help="Run the browser in headless mode", type=bool, default=False)
+    parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
+    parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM',  help="Download and enable DRM binaries", type=bool, default=False)
+    parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
+    parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
+    parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
+    parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  help="URL to open after successful login", type=str, default="")
+    parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=True)
+    parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=True)
+    parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)
+    parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW',  help="The method to select the user input element", type=str)
+    parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT',  help="The method to select the submit button element", type=str)
+    parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER',  help="The value for the user element selection", type=str)
+    parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW',  help="The value for the pw element selection", type=str)
+    parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT',  help="The value for the submit element selection", type=str)
+    parser.add_argument('--logfile', dest='logfile', env_var='LOGFILE',  help="The file to log to", type=str)
+    parser.add_argument('--loglevel', dest='loglevel', env_var='LOGLEVEL', help="Loglevel, default: INFO", type=str, default='INFO')
+    args = parser.parse_args()
+
+
+    logfile = args.logfile
+    loglevel = args.loglevel
+
+    # Optional File Logging
+    if logfile:
+        tlog = logfile.rsplit('/', 1)
+        logpath = tlog[0]
+        logfile = tlog[1]
+        if not os.access(logpath, os.W_OK):
+            # Our logger is not set up yet, so we use print here
+            print("Logging: Can not write to directory. Skippking filelogging handler")
+        else:
+            fn = logpath + '/' + logfile
+            file_handler = logging.FileHandler(filename=fn)
+            # Our logger is not set up yet, so we use print here
+            print("Logging: Logging to " + fn)
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+
+    if 'file_handler' in locals():
+        handlers = [file_handler, stdout_handler]
+    else:
+        handlers = [stdout_handler]
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s',
+        handlers=handlers
+    )
+
+    logger = logging.getLogger(__name__)
+    level = logging.getLevelName(loglevel)
+    logger.setLevel(level)
+
+    browser = Browser(args, log_path, log_level, path_logout)

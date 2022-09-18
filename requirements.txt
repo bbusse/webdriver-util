@@ -1,2 +1,2 @@
 configargparse >= 1.2.3
-selenium >= 3.141.0
+selenium >= 4.4.3

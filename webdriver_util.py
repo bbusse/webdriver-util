@@ -199,7 +199,6 @@ class Browser:
         url_payload = args.url_payload
         login_user = args.login_user
         login_pw = args.login_pw
-        login_pw_base64 = args.login_pw_base64
 
         html_login = {
             "selector_user":          args.selector_user,

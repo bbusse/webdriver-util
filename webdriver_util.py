@@ -14,7 +14,6 @@ import logging
 import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 import sys
 import time
@@ -31,7 +30,9 @@ path_logout = {
     "spotify":   ""
 }
 
-msg_error_selector = "No valid selection method supplied. Use one of id/name/xpath"
+msg_error_selector = "No valid selection method supplied. \
+Use one of id/name/xpath"
+
 
 def which(cmd):
     def is_exe(fpath):
@@ -58,7 +59,8 @@ def web_validate_login(target, validate_url, url):
             return False
         return True
     elif target == "spotify":
-        if not validate_url.startswith("https://accounts.spotify.com/en/status"):
+        url_login_spotify = "https://accounts.spotify.com/en/status"
+        if not validate_url.startswith(url_login_spotify):
             logging.info(url)
             return False
         return True
@@ -83,12 +85,13 @@ def web_logout(target, url, path_logout):
 def web_login(browser, browser_options, login, html_login):
 
     if login['target'] == "grafana5":
+        xpath_login_grafana5 = "/html/body/grafana-app/div/div/div/div/div/div[2]/div[1]/form/div[3]/button"
         html_login_selector_user = "name"
         html_login_selector_pw = "id"
         html_login_selector_submit = "xpath"
         html_login_selector_value_user = "username"
         html_login_selector_value_pw = "inputPassword"
-        html_login_selector_value_submit = "/html/body/grafana-app/div/div/div/div/div/div[2]/div[1]/form/div[3]/button"
+        html_login_selector_value_submit = xpath_login_grafana5
     elif login['target'] == "roundcube":
         html_login_selector_user = "id"
         html_login_selector_pw = "id"
@@ -145,11 +148,14 @@ def web_login(browser, browser_options, login, html_login):
 
         # Submit: Find and click submit button
         if html_login_selector_submit == "name":
-            e = browser.find_element(By.NAME, html_login_selector_value_submit)
+            e = browser.find_element(By.NAME,
+                                     html_login_selector_value_submit)
         elif html_login_selector_submit == "id":
-            e = browser.find_element(By.ID, html_login_selector_value_submit)
+            e = browser.find_element(By.ID,
+                                     html_login_selector_value_submit)
         elif html_login_selector_submit == "xpath":
-            e = browser.find_element(By.XPATH, html_login_selector_value_submit)
+            e = browser.find_element(By.XPATH,
+                                     html_login_selector_value_submit)
         else:
             logging.error(msg_error_selector)
             sys.exit(1)
@@ -171,12 +177,17 @@ class Browser:
 
     def __init__(self, args, log_path, log_level, path_login):
         self.login = {}
-        self.browser = self.browser_init(args, log_path, log_level, path_login)
+        self.browser = self.browser_init(args,
+                                         log_path,
+                                         log_level,
+                                         path_login)
 
+        self.url_releases_geckodriver = "https://github.com/mozilla/geckodriver/releases/"
 
     # Setup browser
     def browser_setup(self, browser_options, browser_profile):
         options = Options()
+
         if not browser_options['headless']:
             options.headless = False
 
@@ -186,7 +197,6 @@ class Browser:
                                     service_log_path=browser_options['log_path'])
 
         return browser
-
 
     def browser_init(self, args, log_path, log_level, path_logout):
 
@@ -225,7 +235,7 @@ class Browser:
             "gracetime_non_headless": 30
         }
 
-        login_pw_base64=False
+        login_pw_base64 = False
         if login_pw and login_pw_base64:
             login_pw = base64.b64decode(login_pw).decode("utf-8")
 
@@ -236,11 +246,13 @@ class Browser:
         self.login["pw"] = login_pw
         self.login["path_logout_target"] = path_logout
 
-        if None == which('geckodriver'):
-            logging.error('Could not find geckodriver.\nYou can download it from: https://github.com/mozilla/geckodriver/releases/')
+        if which('geckodriver') is None:
+            logging.error('Could not find geckodriver.\n\
+                          You can download it from: '
+                          + self.url_releases_geckodriver)
             sys.exit(1)
 
-        if None == which('firefox'):
+        if which('firefox') is None:
             logging.error('Could not find firefox. Aborting..')
             sys.exit(1)
 
@@ -255,11 +267,13 @@ class Browser:
         browser_profile = webdriver.FirefoxProfile()
 
         if browser_drm:
-            browser_profile.set_preference("media.gmp-manager.updateEnabled", True)
-            browser_profile.set_preference("media.eme.enabled", True)
+            browser_profile.set_preference("media.gmp-manager.updateEnabled",
+                                           True)
+            browser_profile.set_preference("media.eme.enabled",
+                                           True)
 
         browser = self.browser_setup(browser_options, browser_profile)
-        r = web_login(browser, browser_options, self.login, html_login)
+        web_login(browser, browser_options, self.login, html_login)
 
         # Add some grace time
         # We need less time when running headless
@@ -269,10 +283,15 @@ class Browser:
             time.sleep(browser_options['gracetime_headless'])
 
         # Validate Login
-        if not web_validate_login(self.login['target'], browser.current_url, self.login['url']):
-            logging.error("Failed to log into " + self.login['target'] + " on: " + self.login['url'])
+        if not web_validate_login(self.login['target'],
+                                  browser.current_url,
+                                  self.login['url']):
+
+            logging.error("Failed to log into "
+                          + self.login['target'] + " on: " + self.login['url'])
         else:
-            logging.info("Successfully logged into " + self.login['target'] + " on: " + self.login['url'])
+            logging.info("Successfully logged into "
+                         + self.login['target'] + " on: " + self.login['url'])
 
             # Open payload
             if not self.login['url_payload']:
@@ -284,7 +303,9 @@ class Browser:
 
             if browser_options['close']:
                 logging.info("Logging out of " + self.login['url'])
-                web_logout(self.login['target'], self.login['url'],self.login['path_logout'])
+                web_logout(self.login['target'],
+                           self.login['url'],
+                           self.login['path_logout'])
                 browser.close()
 
         return browser
@@ -292,29 +313,107 @@ class Browser:
 
 if __name__ == '__main__':
 
-    parser = configargparse.ArgParser( description="")
-    parser.add_argument('--browser-headless', dest='browser_headless', env_var='BROWSER_HEADLESS', help="Run the browser in headless mode", type=bool, default=False)
-    parser.add_argument('--browser-fullscreen', dest='browser_fullscreen', env_var='BROWSER_FULLSCREEN',  help="Run browser in fullscreen mode", type=bool, default=False)
-    parser.add_argument('--browser-enable-drm', dest='browser_drm', env_var='BROWSER_DRM',  help="Download and enable DRM binaries", type=bool, default=False)
-    parser.add_argument('--browser-close', dest='browser_close', env_var='BROWSER_CLOSE',  help="Close browser after successful run", type=bool)
-    parser.add_argument('--target', dest='target', env_var='TARGET',  help="The application to log into", type=str, default="")
-    parser.add_argument('--url', dest='url', env_var='URL',  action='append', help="URL to open in browser startup", type=str, required=True)
-    parser.add_argument('--url-payload', dest='url_payload', env_var='URL_PAYLOAD',  help="URL to open after successful login", type=str, default="")
-    parser.add_argument('--login-user', dest='login_user', env_var='LOGIN_USER',  help="Username to use for web-app login", type=str, required=True)
-    parser.add_argument('--login-pw', dest='login_pw', env_var='LOGIN_PW',  help="Password to user for web-app login", type=str, required=True)
-    parser.add_argument('--selector-user', dest='selector_user', env_var='SELECTOR_USER',  help="The method to select the user input element", type=str)
-    parser.add_argument('--selector-pw', dest='selector_pw', env_var='SELECTOR_PW',  help="The method to select the user input element", type=str)
-    parser.add_argument('--selector-submit', dest='selector_submit', env_var='SELECTOR_SUBMIT',  help="The method to select the submit button element", type=str)
-    parser.add_argument('--selector-value-user', dest='selector_value_user', env_var='SELECTOR_VALUE_USER',  help="The value for the user element selection", type=str)
-    parser.add_argument('--selector-value-pw', dest='selector_value_pw', env_var='SELECTOR_VALUE_PW',  help="The value for the pw element selection", type=str)
-    parser.add_argument('--selector-value-submit', dest='selector_value_submit', env_var='SELECTOR_VALUE_SUBMIT',  help="The value for the submit element selection", type=str)
-    parser.add_argument('--logfile', dest='logfile', env_var='LOGFILE',  help="The file to log to", type=str)
-    parser.add_argument('--loglevel', dest='loglevel', env_var='LOGLEVEL', help="Loglevel, default: INFO", type=str, default='INFO')
+    parser = configargparse.ArgParser(description="")
+    parser.add_argument('--browser-headless',
+                        dest='browser_headless',
+                        env_var='BROWSER_HEADLESS',
+                        help="Run the browser in headless mode",
+                        type=bool,
+                        default=False)
+    parser.add_argument('--browser-fullscreen',
+                        dest='browser_fullscreen',
+                        env_var='BROWSER_FULLSCREEN',
+                        help="Run browser in fullscreen mode",
+                        type=bool,
+                        default=False)
+    parser.add_argument('--browser-enable-drm',
+                        dest='browser_drm',
+                        env_var='BROWSER_DRM',
+                        help="Download and enable DRM binaries",
+                        type=bool,
+                        default=False)
+    parser.add_argument('--browser-close',
+                        dest='browser_close',
+                        env_var='BROWSER_CLOSE',
+                        help="Close browser after successful run",
+                        type=bool)
+    parser.add_argument('--target',
+                        dest='target',
+                        env_var='TARGET',
+                        help="The application to log into",
+                        type=str,
+                        default="")
+    parser.add_argument('--url', dest='url',
+                        env_var='URL',
+                        action='append',
+                        help="URL to open in browser startup",
+                        type=str,
+                        required=True)
+    parser.add_argument('--url-payload',
+                        dest='url_payload',
+                        env_var='URL_PAYLOAD',
+                        help="URL to open after successful login",
+                        type=str,
+                        default="")
+    parser.add_argument('--login-user',
+                        dest='login_user',
+                        env_var='LOGIN_USER',
+                        help="Username to use for web-app login",
+                        type=str,
+                        required=True)
+    parser.add_argument('--login-pw',
+                        dest='login_pw',
+                        env_var='LOGIN_PW',
+                        help="Password to user for web-app login",
+                        type=str,
+                        required=True)
+    parser.add_argument('--selector-user',
+                        dest='selector_user',
+                        env_var='SELECTOR_USER',
+                        help="The method to select the user input element",
+                        type=str)
+    parser.add_argument('--selector-pw',
+                        dest='selector_pw',
+                        env_var='SELECTOR_PW',
+                        help="The method to select the user input element",
+                        type=str)
+    parser.add_argument('--selector-submit',
+                        dest='selector_submit',
+                        env_var='SELECTOR_SUBMIT',
+                        help="The method to select the submit button element",
+                        type=str)
+    parser.add_argument('--selector-value-user',
+                        dest='selector_value_user',
+                        env_var='SELECTOR_VALUE_USER',
+                        help="The value for the user element selection",
+                        type=str)
+    parser.add_argument('--selector-value-pw',
+                        dest='selector_value_pw',
+                        env_var='SELECTOR_VALUE_PW',
+                        help="The value for the pw element selection",
+                        type=str)
+    parser.add_argument('--selector-value-submit',
+                        dest='selector_value_submit',
+                        env_var='SELECTOR_VALUE_SUBMIT',
+                        help="The value for the submit element selection",
+                        type=str)
+    parser.add_argument('--logfile',
+                        dest='logfile',
+                        env_var='LOGFILE',
+                        help="The file to log to",
+                        type=str)
+    parser.add_argument('--loglevel',
+                        dest='loglevel',
+                        env_var='LOGLEVEL',
+                        help="Loglevel, default: INFO",
+                        type=str,
+                        default='INFO')
     args = parser.parse_args()
-
 
     logfile = args.logfile
     loglevel = args.loglevel
+    log_format = '[%(asctime)s] \
+    {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'
 
     # Optional File Logging
     if logfile:
@@ -323,7 +422,8 @@ if __name__ == '__main__':
         logfile = tlog[1]
         if not os.access(logpath, os.W_OK):
             # Our logger is not set up yet, so we use print here
-            print("Logging: Can not write to directory. Skippking filelogging handler")
+            print("Logging: Can not write to directory. \
+            Skippking file logging handler")
         else:
             fn = logpath + '/' + logfile
             file_handler = logging.FileHandler(filename=fn)
@@ -339,7 +439,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(
         level=logging.INFO,
-        format='[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s',
+        format=log_format,
         handlers=handlers
     )
 

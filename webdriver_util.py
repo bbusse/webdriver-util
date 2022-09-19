@@ -52,18 +52,18 @@ def which(cmd):
 
 # Check for a successful login
 def web_validate_login(target, validate_url, url):
-    print("Validating Login: ", validate_url)
+    logging.info("Validating Login: ", validate_url)
     if target == "grafana5":
         if not validate_url.startswith(url + "?orgId="):
             return False
         return True
     elif target == "spotify":
         if not validate_url.startswith("https://accounts.spotify.com/en/status"):
-            print(url)
+            logging.info(url)
             return False
         return True
     elif target == "unknown":
-        print("Can not validate login for unknown target")
+        logging.info("Can not validate login for unknown target")
 
     return True
 
@@ -116,7 +116,7 @@ def web_login(browser, browser_options, login, html_login):
         if browser_options['fullscreen']:
             browser.fullscreen_window()
 
-        print("Opening " + login['url'])
+        logging.info("Opening " + login['url'] + " with browser")
         browser.get(login['url'])
 
         # User: Find and fill user input
@@ -127,7 +127,7 @@ def web_login(browser, browser_options, login, html_login):
         elif html_login_selector_user == "xpath":
             e = browser.find_element(By.XPATH, html_login_selector_value_user)
         else:
-            print(msg_error_selector)
+            logging.error(msg_error_selector)
             sys.exit(1)
         e.send_keys(login['user'])
 
@@ -139,7 +139,7 @@ def web_login(browser, browser_options, login, html_login):
         elif html_login_selector_pw == "xpath":
             e = browser.find_element(By.XPATH, html_login_selector_value_pw)
         else:
-            print(msg_error_selector)
+            logging.error(msg_error_selector)
             sys.exit(1)
         e.send_keys(login['pw'])
 
@@ -151,9 +151,9 @@ def web_login(browser, browser_options, login, html_login):
         elif html_login_selector_submit == "xpath":
             e = browser.find_element(By.XPATH, html_login_selector_value_submit)
         else:
-            print(msg_error_selector)
+            logging.error(msg_error_selector)
             sys.exit(1)
-        print("Trying to log into " + login['url'])
+        logging.info("Trying to log into " + login['url'])
         e.click()
 
     finally:
@@ -237,15 +237,15 @@ class Browser:
         self.login["path_logout_target"] = path_logout
 
         if None == which('geckodriver'):
-            print('Could not find geckodriver.\nYou can download it from: https://github.com/mozilla/geckodriver/releases/')
+            logging.error('Could not find geckodriver.\nYou can download it from: https://github.com/mozilla/geckodriver/releases/')
             sys.exit(1)
 
         if None == which('firefox'):
-            print('Could not find firefox. Aborting..')
+            logging.error('Could not find firefox. Aborting..')
             sys.exit(1)
 
         if len(url) < 12:
-            print('Not a valid URL: ', len(url))
+            logging.error('Not a valid URL: ', len(url))
             sys.exit(1)
 
         # Add trailing slash if it does not exist
@@ -270,9 +270,9 @@ class Browser:
 
         # Validate Login
         if not web_validate_login(self.login['target'], browser.current_url, self.login['url']):
-            print("Failed to log into " + self.login['target'] + " on: " + self.login['url'])
+            logging.error("Failed to log into " + self.login['target'] + " on: " + self.login['url'])
         else:
-            print("Successfully logged into " + self.login['target'] + " on: " + self.login['url'])
+            logging.info("Successfully logged into " + self.login['target'] + " on: " + self.login['url'])
 
             # Open payload
             if not self.login['url_payload']:
@@ -283,7 +283,7 @@ class Browser:
                 #driver.find_element_by_xpath("").click()
 
             if browser_options['close']:
-                print("Logging out of " + self.login['url'])
+                logging.info("Logging out of " + self.login['url'])
                 web_logout(self.login['target'], self.login['url'],self.login['path_logout'])
                 browser.close()
 

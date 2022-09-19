@@ -15,6 +15,7 @@ import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
 import sys
 import time
 
@@ -65,13 +66,13 @@ def web_validate_login(target, validate_url, url):
             return False
         return True
     elif target == "unknown":
-        logging.info("Can not validate login for unknown target")
+        logging.debug("Can not validate login for unknown target")
 
     return True
 
 
 # Logout
-def web_logout(target, url, path_logout):
+def web_logout(browser, target, url, path_logout):
     if target == "unknown":
         return False
     else:
@@ -185,16 +186,17 @@ class Browser:
         self.url_releases_geckodriver = "https://github.com/mozilla/geckodriver/releases/"
 
     # Setup browser
-    def browser_setup(self, browser_options, browser_profile):
+    def browser_setup(self, browser_options):
         options = Options()
+        service = Service()
+        service.log_path = browser_options['log_path']
 
         if not browser_options['headless']:
             options.headless = False
 
         options.log.level = browser_options['log_level']
         browser = webdriver.Firefox(options=options,
-                                    firefox_profile=browser_profile,
-                                    service_log_path=browser_options['log_path'])
+                                    service=service)
 
         return browser
 
@@ -205,10 +207,15 @@ class Browser:
         browser_drm = args.browser_drm
         browser_close = args.browser_close
         target = args.target
-        url = args.url[0]
+        self.url = args.url[0]
         url_payload = args.url_payload
         login_user = args.login_user
         login_pw = args.login_pw
+
+        self.perform_login = True
+
+        if not login_user:
+            self.perform_login = False
 
         html_login = {
             "selector_user":          args.selector_user,
@@ -240,7 +247,7 @@ class Browser:
             login_pw = base64.b64decode(login_pw).decode("utf-8")
 
         self.login["target"] = target
-        self.login["url"] = url
+        self.login["url"] = self.url
         self.login["url_payload"] = url_payload
         self.login["user"] = login_user
         self.login["pw"] = login_pw
@@ -256,24 +263,29 @@ class Browser:
             logging.error('Could not find firefox. Aborting..')
             sys.exit(1)
 
-        if len(url) < 12:
-            logging.error('Not a valid URL: ', len(url))
+        if len(self.url) < 12:
+            logging.error('Not a valid URL: ', len(self.url))
             sys.exit(1)
 
         # Add trailing slash if it does not exist
-        if not url.endswith("/"):
-            url += "/"
-
-        browser_profile = webdriver.FirefoxProfile()
+        if not self.url.endswith("/"):
+            self.url += "/"
 
         if browser_drm:
-            browser_profile.set_preference("media.gmp-manager.updateEnabled",
-                                           True)
-            browser_profile.set_preference("media.eme.enabled",
-                                           True)
+            options = Options()
+            options.firefox_profile.set_preference("media.gmp-manager.updateEnabled",
+                                                   True)
+            options.firefox_profile.set_preference("media.eme.enabled",
+                                                   True)
 
-        browser = self.browser_setup(browser_options, browser_profile)
-        web_login(browser, browser_options, self.login, html_login)
+        browser = self.browser_setup(browser_options)
+
+        if self.perform_login:
+            logging.info("Performing Login")
+            web_login(browser, browser_options, self.login, html_login)
+        else:
+            browser.get(self.url)
+            logging.debug("Requesting " + self.url)
 
         # Add some grace time
         # We need less time when running headless
@@ -282,16 +294,17 @@ class Browser:
         else:
             time.sleep(browser_options['gracetime_headless'])
 
-        # Validate Login
-        if not web_validate_login(self.login['target'],
-                                  browser.current_url,
-                                  self.login['url']):
+        if self.perform_login:
+            # Validate Login
+            if not web_validate_login(self.login['target'],
+                                      browser.current_url,
+                                      self.login['url']):
 
-            logging.error("Failed to log into "
-                          + self.login['target'] + " on: " + self.login['url'])
-        else:
-            logging.info("Successfully logged into "
-                         + self.login['target'] + " on: " + self.login['url'])
+                logging.error("Failed to log into "
+                              + self.login['target'] + " on: " + self.login['url'])
+            else:
+                logging.info("Successfully logged into "
+                             + self.login['target'] + " on: " + self.login['url'])
 
             # Open payload
             if not self.login['url_payload']:
@@ -299,16 +312,35 @@ class Browser:
             else:
                 logging("Opening payload: ", self.login['url_payload'])
                 browser.get(self.login['url_payload'])
-                #driver.find_element_by_xpath("").click()
 
             if browser_options['close']:
                 logging.info("Logging out of " + self.login['url'])
-                web_logout(self.login['target'],
+                web_logout(browser,
+                           self.login['target'],
                            self.login['url'],
                            self.login['path_logout'])
                 browser.close()
 
         return browser
+
+    def screenshot(self, img_path, t_screenshot_interval_s):
+        t0 = int(round(time.time() * 1000))
+        n = 0
+
+        self.browser.get(self.url)
+
+        while True:
+            filename = img_path + '/image_' + str(n).zfill(4) + '.png'
+            self.browser.save_screenshot(filename)
+            t1 = int(round(time.time() * 1000))
+            logging.info(self.url + " saved to: " + filename + " in " + str(t1 - t0) + " ms")
+            t0 = t1
+
+            time.sleep(t_screenshot_interval_s)
+            if 10 == n:
+                n = 0
+            else:
+                n += 1
 
 
 if __name__ == '__main__':
@@ -360,13 +392,13 @@ if __name__ == '__main__':
                         env_var='LOGIN_USER',
                         help="Username to use for web-app login",
                         type=str,
-                        required=True)
+                        required=False)
     parser.add_argument('--login-pw',
                         dest='login_pw',
                         env_var='LOGIN_PW',
                         help="Password to user for web-app login",
                         type=str,
-                        required=True)
+                        required=False)
     parser.add_argument('--selector-user',
                         dest='selector_user',
                         env_var='SELECTOR_USER',
@@ -397,6 +429,27 @@ if __name__ == '__main__':
                         env_var='SELECTOR_VALUE_SUBMIT',
                         help="The value for the submit element selection",
                         type=str)
+    parser.add_argument('--screenshots',
+                        dest='screenshots',
+                        env_var='SCREENSHOTS',
+                        help="Take browser screenshots",
+                        type=bool,
+                        default=False
+                        )
+    parser.add_argument('--screenshots-img-path',
+                        dest='screenshots_img_path',
+                        env_var='SCREENSHOTS_IMG_PATH',
+                        help="Path to save screenshots to",
+                        type=str,
+                        default="/tmp/browser-screenshots/"
+                        )
+    parser.add_argument('--screenshots-pause',
+                        dest='screenshots_pause',
+                        env_var='SCREENSHOTS_PAUSE',
+                        help="Time between two screenshots in seconds",
+                        type=int,
+                        default=3
+                        )
     parser.add_argument('--logfile',
                         dest='logfile',
                         env_var='LOGFILE',
@@ -412,6 +465,10 @@ if __name__ == '__main__':
 
     logfile = args.logfile
     loglevel = args.loglevel
+    screenshots = args.screenshots
+    screenshots_img_path = args.screenshots_img_path
+    t_screenshots_interval_s = args.screenshots_pause
+
     log_format = '[%(asctime)s] \
     {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'
 
@@ -447,4 +504,10 @@ if __name__ == '__main__':
     level = logging.getLevelName(loglevel)
     logger.setLevel(level)
 
-    browser = Browser(args, log_path, log_level, path_logout)
+    b = Browser(args, log_path, log_level, path_logout)
+
+    if screenshots:
+        b.screenshot(screenshots_img_path, 3)
+    else:
+        while True:
+            time.sleep(1)

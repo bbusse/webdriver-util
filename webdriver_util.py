@@ -427,7 +427,7 @@ if __name__ == '__main__':
                         env_var='SCREENSHOTS_PAUSE',
                         help="Time between two screenshots in seconds",
                         type=int,
-                        default=3
+                        default=0.5
                         )
     parser.add_argument('--logfile',
                         dest='logfile',

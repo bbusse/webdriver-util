@@ -12,6 +12,7 @@ import base64
 import configargparse
 import logging
 import os
+from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -20,9 +21,7 @@ import sys
 import time
 
 
-# Logging
-log_path = '/tmp/geckobrowser.log'
-log_level = 'info'
+url_releases_geckodriver = "https://github.com/mozilla/geckodriver/releases/"
 
 path_logout = {
     "gitea":     "",
@@ -170,51 +169,67 @@ def web_login(browser, browser_options, login, html_login):
     return False
 
 
-def return_browser_init(args, log_path, log_level, path_login):
-    return Browser(log_path, log_level, path_login)
-
-
 class Browser:
 
-    def __init__(self, args, log_path, log_level, path_login):
+    def __init__(self, args, log_level, path_login, url_releases_geckodriver):
         self.login = {}
         self.browser = self.browser_init(args,
-                                         log_path,
                                          log_level,
                                          path_login)
 
         self.url_releases_geckodriver = "https://github.com/mozilla/geckodriver/releases/"
 
-    # Setup browser
-    def browser_setup(self, browser_options):
+    def gecko_browser_setup(self):
         options = Options()
-        service = Service()
-        service.log_path = browser_options['log_path']
+        service = Service(log_path=os.devnull)
 
-        if not browser_options['headless']:
+        service.log_path = os.devnull
+        options.log.level = self.browser_options['log_level']
+
+        if not self.browser_options['headless']:
             options.headless = False
 
-        options.log.level = browser_options['log_level']
+        if self.browser_options["drm"]:
+            options.firefox_profile.set_preference("media.gmp-manager.updateEnabled",
+                                                   True)
+            options.firefox_profile.set_preference("media.eme.enabled",
+                                                   True)
+
         browser = webdriver.Firefox(options=options,
                                     service=service)
 
         return browser
 
-    def browser_init(self, args, log_path, log_level, path_logout):
+    def browser_init(self, args, log_level, path_logout):
 
-        browser_headless = args.browser_headless
-        browser_fullscreen = args.browser_fullscreen
-        browser_drm = args.browser_drm
-        browser_close = args.browser_close
-        target = args.target
+        self.browser_options = {
+            "gecko_logfile":          args.gecko_logfile,
+            "log_level":              log_level,
+            "headless":               args.browser_headless,
+            "fullscreen":             args.browser_fullscreen,
+            "gracetime_headless":     3,
+            "gracetime_non_headless": 30,
+            "drm":                    args.browser_drm,
+            "close":                  args.browser_close,
+        }
+
+        self.target = args.target
         self.url = args.url[0]
-        url_payload = args.url_payload
-        login_user = args.login_user
-        login_pw = args.login_pw
-
         self.perform_login = True
 
-        if not login_user:
+        login_pw = args.login_pw
+        login_pw_base64 = False
+        if login_pw and login_pw_base64:
+            login_pw = base64.b64decode(login_pw).decode("utf-8")
+
+        self.login["target"] = self.target
+        self.login["url"] = self.url
+        self.login["url_payload"] = args.url_payload
+        self.login["user"] = args.login_user
+        self.login["pw"] = login_pw
+        self.login["path_logout_target"] = path_logout
+
+        if not self.login["user"]:
             self.perform_login = False
 
         html_login = {
@@ -226,42 +241,12 @@ class Browser:
             "selector_value_submit":  args.selector_value_submit
         }
 
-        if not target:
-            target = "unknown"
+        if self.target == "":
+            self.target = "unknown"
             path_logout = "unknown"
         else:
-            path_logout_target = path_logout[target]
-
-        browser_options = {
-            "log_level":              log_level,
-            "log_path":               log_path,
-            "headless":               browser_headless,
-            "fullscreen":             browser_fullscreen,
-            "close":                  browser_close,
-            "gracetime_headless":     3,
-            "gracetime_non_headless": 30
-        }
-
-        login_pw_base64 = False
-        if login_pw and login_pw_base64:
-            login_pw = base64.b64decode(login_pw).decode("utf-8")
-
-        self.login["target"] = target
-        self.login["url"] = self.url
-        self.login["url_payload"] = url_payload
-        self.login["user"] = login_user
-        self.login["pw"] = login_pw
-        self.login["path_logout_target"] = path_logout
-
-        if which('geckodriver') is None:
-            logging.error('Could not find geckodriver.\n\
-                          You can download it from: '
-                          + self.url_releases_geckodriver)
-            sys.exit(1)
-
-        if which('firefox') is None:
-            logging.error('Could not find firefox. Aborting..')
-            sys.exit(1)
+            logging.info("Browser target: " + self.target)
+            path_logout_target = path_logout[self.target]
 
         if len(self.url) < 12:
             logging.error('Not a valid URL: ', len(self.url))
@@ -271,28 +256,21 @@ class Browser:
         if not self.url.endswith("/"):
             self.url += "/"
 
-        if browser_drm:
-            options = Options()
-            options.firefox_profile.set_preference("media.gmp-manager.updateEnabled",
-                                                   True)
-            options.firefox_profile.set_preference("media.eme.enabled",
-                                                   True)
-
-        browser = self.browser_setup(browser_options)
+        browser = self.gecko_browser_setup()
 
         if self.perform_login:
             logging.info("Performing Login")
-            web_login(browser, browser_options, self.login, html_login)
+            web_login(browser, self.browser_options, self.login, html_login)
         else:
             browser.get(self.url)
             logging.debug("Requesting " + self.url)
 
         # Add some grace time
         # We need less time when running headless
-        if not browser_options['headless']:
-            time.sleep(browser_options['gracetime_non_headless'])
+        if not self.browser_options['headless']:
+            time.sleep(self.browser_options['gracetime_non_headless'])
         else:
-            time.sleep(browser_options['gracetime_headless'])
+            time.sleep(self.browser_options['gracetime_headless'])
 
         if self.perform_login:
             # Validate Login
@@ -313,7 +291,7 @@ class Browser:
                 logging("Opening payload: ", self.login['url_payload'])
                 browser.get(self.login['url_payload'])
 
-            if browser_options['close']:
+            if self.browser_options['close']:
                 logging.info("Logging out of " + self.login['url'])
                 web_logout(browser,
                            self.login['target'],
@@ -323,10 +301,11 @@ class Browser:
 
         return browser
 
-    def screenshot(self, img_path, t_screenshot_interval_s):
+    def screenshot(self, img_path, t_wait_s):
         t0 = int(round(time.time() * 1000))
         n = 0
 
+        Path(img_path).mkdir(parents=True, exist_ok=True)
         self.browser.get(self.url)
 
         while True:
@@ -336,7 +315,7 @@ class Browser:
             logging.info(self.url + " saved to: " + filename + " in " + str(t1 - t0) + " ms")
             t0 = t1
 
-            time.sleep(t_screenshot_interval_s)
+            time.sleep(t_wait_s)
             if 10 == n:
                 n = 0
             else:
@@ -441,7 +420,7 @@ if __name__ == '__main__':
                         env_var='SCREENSHOTS_IMG_PATH',
                         help="Path to save screenshots to",
                         type=str,
-                        default="/tmp/browser-screenshots/"
+                        default="/tmp/screenshots/"
                         )
     parser.add_argument('--screenshots-pause',
                         dest='screenshots_pause',
@@ -455,8 +434,14 @@ if __name__ == '__main__':
                         env_var='LOGFILE',
                         help="The file to log to",
                         type=str)
+    parser.add_argument('--geckodriver-logfile',
+                        dest='gecko_logfile',
+                        env_var='LOGFILE_GECKO',
+                        help="The file to log geckodriver messages to",
+                        type=str,
+                        default="/tmp/geckodriver.log")
     parser.add_argument('--loglevel',
-                        dest='loglevel',
+                        dest='log_level',
                         env_var='LOGLEVEL',
                         help="Loglevel, default: INFO",
                         type=str,
@@ -464,7 +449,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logfile = args.logfile
-    loglevel = args.loglevel
+    log_level = args.log_level
     screenshots = args.screenshots
     screenshots_img_path = args.screenshots_img_path
     t_screenshots_interval_s = args.screenshots_pause
@@ -501,13 +486,23 @@ if __name__ == '__main__':
     )
 
     logger = logging.getLogger(__name__)
-    level = logging.getLevelName(loglevel)
+    level = logging.getLevelName(log_level)
     logger.setLevel(level)
 
-    b = Browser(args, log_path, log_level, path_logout)
+    if which('geckodriver') is None:
+        logging.error('Could not find geckodriver.\n\
+                      You can download it from: '
+                      + url_releases_geckodriver)
+        sys.exit(1)
+
+    if which('firefox') is None:
+        logging.error('Could not find firefox. Aborting..')
+        sys.exit(1)
+
+    b = Browser(args, log_level, path_logout, url_releases_geckodriver)
 
     if screenshots:
-        b.screenshot(screenshots_img_path, 3)
+        b.screenshot(screenshots_img_path, t_screenshots_interval_s)
     else:
         while True:
             time.sleep(1)

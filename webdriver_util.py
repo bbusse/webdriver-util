@@ -183,8 +183,8 @@ class Browser:
         service.log_path = os.devnull
         options.log.level = self.browser_options['log_level']
 
-        if not self.browser_options['headless']:
-            options.headless = False
+        if self.browser_options['headless']:
+            options.headless = True
 
         if self.browser_options["drm"]:
             options.firefox_profile.set_preference("media.gmp-manager.updateEnabled",

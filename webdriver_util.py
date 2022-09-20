@@ -116,9 +116,6 @@ def web_login(browser, browser_options, login, html_login):
         html_login_selector_value_submit = html_login['selector_value_submit']
 
     try:
-        if browser_options['fullscreen']:
-            browser.fullscreen_window()
-
         logging.info("Opening " + login['url'] + " with browser")
         browser.get(login['url'])
 
@@ -257,6 +254,8 @@ class Browser:
             self.url += "/"
 
         browser = self.gecko_browser_setup()
+        if self.browser_options['fullscreen']:
+            browser.fullscreen_window()
 
         if self.perform_login:
             logging.info("Performing Login")

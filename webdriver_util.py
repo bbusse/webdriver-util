@@ -309,7 +309,7 @@ class Browser:
         self.browser.get(self.url)
 
         while True:
-            filename = img_path + '/image_' + str(n).zfill(4) + '.png'
+            filename = img_path + '/image_' + str(0).zfill(4) + '.png'
             self.browser.save_screenshot(filename)
             t1 = int(round(time.time() * 1000))
             logging.info(self.url + " saved to: " + filename + " in " + str(t1 - t0) + " ms")

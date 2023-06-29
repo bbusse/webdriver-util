@@ -228,9 +228,6 @@ class Browser:
 
         self.browser = self.gecko_browser_setup()
 
-        if self.browser_options['fullscreen']:
-            browser.fullscreen_window()
-
         if self.perform_login:
             logging.info("Performing Login")
             web_login(browser, self.browser_options, self.login, html_login)
@@ -297,6 +294,9 @@ class Browser:
                                     service=service)
 
         self.install_extensions()
+
+        if self.browser_options['fullscreen']:
+            browser.fullscreen_window()
 
         return browser
 

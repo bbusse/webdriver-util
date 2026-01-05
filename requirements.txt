@@ -1,2 +1,2 @@
-configargparse >= 1.2.3
-selenium >= 4.4.3
+configargparse >= 1.7.1
+selenium >= 4.36.0

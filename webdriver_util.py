@@ -188,6 +188,9 @@ class Browser:
             "gracetime_non_headless": 30,
             "drm":                    args.browser_drm,
             "close":                  args.browser_close,
+            # Optional explicit paths to bypass Selenium Manager
+            "geckodriver_path":       args.geckodriver_path or os.getenv('GECKODRIVER'),
+            "firefox_binary":         args.firefox_binary or os.getenv('FIREFOX_BIN'),
         }
 
         self.target = args.target
@@ -276,7 +279,19 @@ class Browser:
 
     def gecko_browser_setup(self):
         options = Options()
-        service = Service(log_path=os.devnull)
+        geckodriver_path = self.browser_options.get('geckodriver_path')
+        firefox_binary = self.browser_options.get('firefox_binary')
+
+        # Explicit Firefox binary prevents Selenium Manager browser resolution
+        if firefox_binary:
+            options.binary_location = firefox_binary
+
+        # Providing geckodriver path prevents Selenium Manager driver resolution:
+        # Did not work for linux/aarch64
+        if geckodriver_path:
+            service = Service(executable_path=geckodriver_path, log_path=os.devnull)
+        else:
+            service = Service(log_path=os.devnull)
 
         service.log_path = os.devnull
         options.log.level = self.browser_options['log_level']
@@ -479,6 +494,16 @@ if __name__ == '__main__':
                         help="Loglevel, default: INFO",
                         type=str,
                         default='INFO')
+    parser.add_argument('--geckodriver-path',
+                        dest='geckodriver_path',
+                        env_var='GECKODRIVER',
+                        help='Path to geckodriver binary (bypasses Selenium Manager)',
+                        type=str)
+    parser.add_argument('--firefox-binary',
+                        dest='firefox_binary',
+                        env_var='FIREFOX_BIN',
+                        help='Path to firefox binary (bypasses Selenium Manager)',
+                        type=str)
     args = parser.parse_args()
 
     logfile = args.logfile
@@ -525,15 +550,27 @@ if __name__ == '__main__':
     level = logging.getLevelName(log_level)
     logger.setLevel(level)
 
-    if which('geckodriver') is None:
-        logging.error('Could not find geckodriver.\n\
-                      You can download it from: '
-                      + url_releases_geckodriver)
-        sys.exit(1)
+    # Validate driver either by explicit path or PATH
+    geckopath = args.geckodriver_path or os.environ.get('GECKODRIVER')
+    if geckopath:
+        if not (os.path.isfile(geckopath) and os.access(geckopath, os.X_OK)):
+            logging.error('GECKODRIVER not executable at: ' + str(geckopath))
+            sys.exit(1)
+    else:
+        if which('geckodriver') is None:
+            logging.error('Could not find geckodriver.\nYou can download it from: ' + url_releases_geckodriver)
+            sys.exit(1)
 
-    if which('firefox') is None:
-        logging.error('Could not find firefox. Aborting..')
-        sys.exit(1)
+    # Validate browser either by explicit path or PATH
+    firefox_bin = args.firefox_binary or os.environ.get('FIREFOX_BIN')
+    if firefox_bin:
+        if not (os.path.isfile(firefox_bin) and os.access(firefox_bin, os.X_OK)):
+            logging.error('FIREFOX_BIN not executable at: ' + str(firefox_bin))
+            sys.exit(1)
+    else:
+        if which('firefox') is None:
+            logging.error('Could not find firefox. Aborting..')
+            sys.exit(1)
 
     b = Browser(args,
                 log_level,

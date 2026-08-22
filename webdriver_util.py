@@ -17,6 +17,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
+import subprocess
 import sys
 import time
 
@@ -288,12 +289,14 @@ class Browser:
 
         # Providing geckodriver path prevents Selenium Manager driver resolution:
         # Did not work for linux/aarch64
+        # Send geckodriver output to our own stdout instead of a file,
+        # so driver errors show up alongside the rest of our logging
         if geckodriver_path:
-            service = Service(executable_path=geckodriver_path, log_path=os.devnull)
+            service = Service(executable_path=geckodriver_path,
+                              log_output=subprocess.STDOUT)
         else:
-            service = Service(log_path=os.devnull)
+            service = Service(log_output=subprocess.STDOUT)
 
-        service.log_path = os.devnull
         options.log.level = self.browser_options['log_level']
 
         if self.browser_options['headless']:

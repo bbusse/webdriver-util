@@ -171,7 +171,6 @@ class Browser:
 
     def __init__(self,
                  args,
-                 log_level,
                  path_login,
                  extensions,
                  url_releases_geckodriver):
@@ -182,7 +181,9 @@ class Browser:
 
         self.browser_options = {
             "gecko_logfile":          args.gecko_logfile,
-            "log_level":              log_level,
+            # Geckodriver is noisy, so it gets its own level instead of
+            # inheriting ours. It takes lowercase names, not the python ones
+            "gecko_log_level":        args.gecko_log_level.lower(),
             "headless":               args.browser_headless,
             "fullscreen":             args.browser_fullscreen,
             "gracetime_headless":     3,
@@ -297,7 +298,7 @@ class Browser:
         else:
             service = Service(log_output=subprocess.STDOUT)
 
-        options.log.level = self.browser_options['log_level']
+        options.log.level = self.browser_options['gecko_log_level']
 
         if self.browser_options['headless']:
             options.headless = True
@@ -497,6 +498,14 @@ if __name__ == '__main__':
                         help="Loglevel, default: INFO",
                         type=str,
                         default='INFO')
+    parser.add_argument('--gecko-loglevel',
+                        dest='gecko_log_level',
+                        env_var='GECKO_LOGLEVEL',
+                        help="Geckodriver loglevel: "
+                             "trace, debug, config, info, warn, error, fatal, "
+                             "default: warn",
+                        type=str,
+                        default='warn')
     parser.add_argument('--geckodriver-path',
                         dest='geckodriver_path',
                         env_var='GECKODRIVER',
@@ -576,7 +585,6 @@ if __name__ == '__main__':
             sys.exit(1)
 
     b = Browser(args,
-                log_level,
                 path_logout,
                 browser_extensions,
                 url_releases_geckodriver)

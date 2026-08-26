@@ -10,14 +10,19 @@
 
 import base64
 import configargparse
+import json
 import logging
 import os
 from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.common.options import ArgOptions
 from selenium.webdriver.firefox.service import Service
+import shlex
 import subprocess
+import urllib.error
+import urllib.request
 import sys
 import time
 
@@ -54,7 +59,7 @@ def which(cmd):
 
 # Check for a successful login
 def web_validate_login(target, validate_url, url):
-    logging.info("Validating Login: ", validate_url)
+    logging.info("Validating Login: " + str(validate_url))
     if target == "grafana5":
         if not validate_url.startswith(url + "?orgId="):
             return False
@@ -193,6 +198,11 @@ class Browser:
             # Optional explicit paths to bypass Selenium Manager
             "geckodriver_path":       args.geckodriver_path or os.getenv('GECKODRIVER'),
             "firefox_binary":         args.firefox_binary or os.getenv('FIREFOX_BIN'),
+            # servoshell speaks webdriver itself, so it needs no driver binary
+            "webdriver_url":          args.webdriver_url or os.getenv('WEBDRIVER_URL'),
+            "webdriver_port":         args.webdriver_port,
+            "servoshell_binary":      args.servoshell_binary or os.getenv('SERVOSHELL_BIN'),
+            "servoshell_args":        args.servoshell_args or os.getenv('SERVOSHELL_ARGS', ''),
         }
 
         self.target = args.target
@@ -214,6 +224,7 @@ class Browser:
 
         self.login["target"] = self.target
         self.login["urls"] = self.urls
+        self.login["url"] = self.urls[0] if self.urls else ""
         self.login["url_payload"] = args.url_payload
         self.login["user"] = args.login_user
         self.login["pw"] = login_pw
@@ -231,11 +242,17 @@ class Browser:
             "selector_value_submit":  args.selector_value_submit
         }
 
-        self.browser = self.gecko_browser_setup()
+        self.servoshell = None
+
+        if (self.browser_options['webdriver_url']
+                or self.browser_options['servoshell_binary']):
+            self.browser = self.servo_browser_setup()
+        else:
+            self.browser = self.gecko_browser_setup()
 
         if self.perform_login:
             logging.info("Performing Login")
-            web_login(browser, self.browser_options, self.login, html_login)
+            web_login(self.browser, self.browser_options, self.login, html_login)
         else:
             nurls = len(self.urls)
             logging.info("browser: Opening " + str(nurls) + " URLs")
@@ -255,7 +272,7 @@ class Browser:
         if self.perform_login:
             # Validate Login
             if not web_validate_login(self.login['target'],
-                                      browser.current_url,
+                                      self.browser.current_url,
                                       self.login['url']):
 
                 logging.error("Failed to log into "
@@ -268,16 +285,76 @@ class Browser:
             if not self.login['url_payload']:
                 logging.info("No payload supplied")
             else:
-                logging("Opening payload: ", self.login['url_payload'])
-                browser.get(self.login['url_payload'])
+                logging.info("Opening payload: " + self.login['url_payload'])
+                self.browser.get(self.login['url_payload'])
 
             if self.browser_options['close']:
                 logging.info("Logging out of " + self.login['url'])
-                web_logout(browser,
+                web_logout(self.browser,
                            self.login['target'],
                            self.login['url'],
-                           self.login['path_logout'])
-                browser.close()
+                           self.login['path_logout_target'])
+                self.browser.close()
+
+    # servoshell serves webdriver on a port of its own rather than through a
+    # driver binary, so it is spawned here and attached to over http
+    def servo_browser_setup(self):
+        url = self.browser_options['webdriver_url']
+
+        if not url:
+            port = self.browser_options['webdriver_port']
+            url = "http://127.0.0.1:" + str(port)
+            self.servoshell = self.servo_spawn(port)
+
+        if not self.webdriver_wait_ready(url):
+            logging.error("No webdriver answering on " + url)
+            sys.exit(1)
+
+        options = ArgOptions()
+        options.set_capability("browserName", "servo")
+
+        browser = webdriver.Remote(command_executor=url, options=options)
+
+        # servoshell takes its window size on the command line and has no
+        # addon support, so neither is applied here
+        if self.browser_options['fullscreen']:
+            try:
+                browser.fullscreen_window()
+            except Exception as e:
+                logging.warning("servoshell would not go fullscreen: " + str(e))
+
+        return browser
+
+    def servo_spawn(self, port):
+        cmd = [self.browser_options['servoshell_binary'],
+               "--webdriver=" + str(port)]
+
+        if self.browser_options['headless']:
+            cmd.append("--headless")
+
+        cmd += shlex.split(self.browser_options['servoshell_args'])
+
+        logging.info("Starting servoshell: " + " ".join(cmd))
+
+        return subprocess.Popen(cmd, shell=False, close_fds=True)
+
+    # servoshell needs a moment before it accepts sessions, and reports it
+    # through the webdriver status endpoint
+    @staticmethod
+    def webdriver_wait_ready(url, timeout_s=30):
+        deadline = time.time() + timeout_s
+
+        while time.time() < deadline:
+            try:
+                with urllib.request.urlopen(url + "/status", timeout=2) as r:
+                    if json.loads(r.read()).get("value", {}).get("ready"):
+                        return True
+            except (urllib.error.URLError, OSError, ValueError):
+                pass
+
+            time.sleep(0.5)
+
+        return False
 
     def gecko_browser_setup(self):
         options = Options()
@@ -300,19 +377,21 @@ class Browser:
 
         options.log.level = self.browser_options['gecko_log_level']
 
+        # selenium removed the Options.headless property in 4.13; assigning it
+        # silently does nothing and firefox comes up headful
         if self.browser_options['headless']:
-            options.headless = True
+            options.add_argument("-headless")
 
+        # options.firefox_profile went the same way; preferences are set on the
+        # options object itself now
         if self.browser_options["drm"]:
-            options.firefox_profile.set_preference("media.gmp-manager.updateEnabled",
-                                                   True)
-            options.firefox_profile.set_preference("media.eme.enabled",
-                                                   True)
+            options.set_preference("media.gmp-manager.updateEnabled", True)
+            options.set_preference("media.eme.enabled", True)
 
         browser = webdriver.Firefox(options=options,
                                     service=service)
 
-        self.install_extensions()
+        self.install_extensions(browser)
 
         if self.browser_options['fullscreen']:
             browser.fullscreen_window()
@@ -330,9 +409,9 @@ class Browser:
 
         return True
 
-    def install_extensions(self):
+    def install_extensions(self, browser):
         for ext in self.extensions:
-            driver.install_addon(ext, temporary=True)
+            browser.install_addon(ext, temporary=True)
 
         return True
 
@@ -368,8 +447,38 @@ class Browser:
                 return True
 
 
-if __name__ == '__main__':
+def setup_logging(logfile, log_level):
+    log_format = '[%(asctime)s] \
+    {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'
 
+    handlers = [logging.StreamHandler(sys.stdout)]
+
+    # Optional File Logging
+    if logfile:
+        logpath, _, name = logfile.rpartition('/')
+        if logpath and not os.access(logpath, os.W_OK):
+            # Our logger is not set up yet, so we use print here
+            print("Logging: Can not write to directory. \
+            Skipping file logging handler")
+        else:
+            handlers.insert(0, logging.FileHandler(filename=logfile))
+            # Our logger is not set up yet, so we use print here
+            print("Logging: Logging to " + logfile)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format=log_format,
+        handlers=handlers
+    )
+
+    logging.getLogger(__name__).setLevel(logging.getLevelName(log_level))
+
+    return True
+
+
+# The parser lives here rather than under __main__ so importing this module
+# gives a caller the same arguments the command line takes
+def build_parser():
     parser = configargparse.ArgParser(description="")
     parser.add_argument('--browser-headless',
                         dest='browser_headless',
@@ -516,6 +625,49 @@ if __name__ == '__main__':
                         env_var='FIREFOX_BIN',
                         help='Path to firefox binary (bypasses Selenium Manager)',
                         type=str)
+    parser.add_argument('--webdriver-url',
+                        dest='webdriver_url',
+                        env_var='WEBDRIVER_URL',
+                        help='Attach to a webdriver server already listening '
+                             'on this url instead of starting a browser',
+                        type=str)
+    parser.add_argument('--webdriver-port',
+                        dest='webdriver_port',
+                        env_var='WEBDRIVER_PORT',
+                        help='Port servoshell serves webdriver on, '
+                             'default: 7000',
+                        type=int,
+                        default=7000)
+    parser.add_argument('--servoshell-binary',
+                        dest='servoshell_binary',
+                        env_var='SERVOSHELL_BIN',
+                        help='Path to servoshell binary, selects the servo '
+                             'engine and needs no driver',
+                        type=str)
+    parser.add_argument('--servoshell-args',
+                        dest='servoshell_args',
+                        env_var='SERVOSHELL_ARGS',
+                        help='Extra arguments passed to servoshell',
+                        type=str)
+
+    return parser
+
+
+# Library entry point: take the same arguments the command line does, log in,
+# and hand back the Browser so a caller can drive the session itself
+def browser_from_args(argv=None, logout_paths=None):
+    args = build_parser().parse_args(argv)
+    setup_logging(args.logfile, args.log_level)
+
+    return Browser(args,
+                   logout_paths if logout_paths is not None else path_logout,
+                   [],
+                   url_releases_geckodriver)
+
+
+if __name__ == '__main__':
+
+    parser = build_parser()
     args = parser.parse_args()
 
     logfile = args.logfile
@@ -527,62 +679,34 @@ if __name__ == '__main__':
 
     browser_extensions = []
 
-    log_format = '[%(asctime)s] \
-    {%(filename)s:%(lineno)d} %(levelname)s - %(message)s'
+    setup_logging(logfile, log_level)
 
-    # Optional File Logging
-    if logfile:
-        tlog = logfile.rsplit('/', 1)
-        logpath = tlog[0]
-        logfile = tlog[1]
-        if not os.access(logpath, os.W_OK):
-            # Our logger is not set up yet, so we use print here
-            print("Logging: Can not write to directory. \
-            Skippking file logging handler")
-        else:
-            fn = logpath + '/' + logfile
-            file_handler = logging.FileHandler(filename=fn)
-            # Our logger is not set up yet, so we use print here
-            print("Logging: Logging to " + fn)
-
-    stdout_handler = logging.StreamHandler(sys.stdout)
-
-    if 'file_handler' in locals():
-        handlers = [file_handler, stdout_handler]
-    else:
-        handlers = [stdout_handler]
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format=log_format,
-        handlers=handlers
-    )
-
-    logger = logging.getLogger(__name__)
-    level = logging.getLevelName(log_level)
-    logger.setLevel(level)
+    use_servo = bool(args.webdriver_url or os.environ.get('WEBDRIVER_URL')
+                     or args.servoshell_binary
+                     or os.environ.get('SERVOSHELL_BIN'))
 
     # Validate driver either by explicit path or PATH
     geckopath = args.geckodriver_path or os.environ.get('GECKODRIVER')
-    if geckopath:
-        if not (os.path.isfile(geckopath) and os.access(geckopath, os.X_OK)):
-            logging.error('GECKODRIVER not executable at: ' + str(geckopath))
-            sys.exit(1)
-    else:
-        if which('geckodriver') is None:
-            logging.error('Could not find geckodriver.\nYou can download it from: ' + url_releases_geckodriver)
-            sys.exit(1)
+    if not use_servo:
+        if geckopath:
+            if not (os.path.isfile(geckopath) and os.access(geckopath, os.X_OK)):
+                logging.error('GECKODRIVER not executable at: ' + str(geckopath))
+                sys.exit(1)
+        else:
+            if which('geckodriver') is None:
+                logging.error('Could not find geckodriver.\nYou can download it from: ' + url_releases_geckodriver)
+                sys.exit(1)
 
-    # Validate browser either by explicit path or PATH
-    firefox_bin = args.firefox_binary or os.environ.get('FIREFOX_BIN')
-    if firefox_bin:
-        if not (os.path.isfile(firefox_bin) and os.access(firefox_bin, os.X_OK)):
-            logging.error('FIREFOX_BIN not executable at: ' + str(firefox_bin))
-            sys.exit(1)
-    else:
-        if which('firefox') is None:
-            logging.error('Could not find firefox. Aborting..')
-            sys.exit(1)
+        # Validate browser either by explicit path or PATH
+        firefox_bin = args.firefox_binary or os.environ.get('FIREFOX_BIN')
+        if firefox_bin:
+            if not (os.path.isfile(firefox_bin) and os.access(firefox_bin, os.X_OK)):
+                logging.error('FIREFOX_BIN not executable at: ' + str(firefox_bin))
+                sys.exit(1)
+        else:
+            if which('firefox') is None:
+                logging.error('Could not find firefox. Aborting..')
+                sys.exit(1)
 
     b = Browser(args,
                 path_logout,
